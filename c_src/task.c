@@ -41,7 +41,9 @@ task_alloc()
     task->env = env;
     task->type = TASK_UNDEFINED;
     task->ref = 0;
-
+    task->arg1 = atom_undefined;
+    task->arg2 = atom_undefined;
+    task->arg3 = atom_undefined;
     return task;
 }
 void 

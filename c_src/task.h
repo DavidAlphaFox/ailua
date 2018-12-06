@@ -5,6 +5,7 @@
 typedef struct _task task_t;
 enum _task_type {
     TASK_UNDEFINED,
+    TASK_LUA_CLOSE,
     TASK_LUA_CALL,
     TASK_LUA_DOFILE
 } ;
