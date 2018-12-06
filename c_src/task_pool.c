@@ -40,7 +40,7 @@ lua_worker_thread_run(void* arg)
     w->alive = 0;
     return NULL;
 }
-int 
+static int 
 worker_alloc(task_worker_t* worker,int id)
 {
     task_queue_t* q = NULL;
@@ -76,8 +76,8 @@ worker_alloc(task_worker_t* worker,int id)
     return -1;
 }
 
-void 
-woker_free(task_worker_t* w)
+static void 
+worker_free(task_worker_t* w)
 {
     task_queue_push(w->q, NULL);
 
@@ -112,7 +112,7 @@ pool_alloc(int max_wokers)
     if(NULL == pool) return NULL;
     while(i > 0) {
         --i;
-        work_free(&pool->workers[i]);
+        worker_free(&pool->workers[i]);
     }
     enif_free(pool->workers);
     pool->workers = NULL;
@@ -130,7 +130,7 @@ pool_free(task_pool_t* pool)
         return;
     }
     for(i = 0; i < pool->count; i++){
-        work_free(&pool->workers[i]);
+        worker_free(&pool->workers[i]);
     }
     enif_free(pool->workers);
     pool->workers = NULL;
