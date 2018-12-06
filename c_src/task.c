@@ -62,7 +62,7 @@ run(task_t* task)
         case TASK_LUA_DOFILE:
             return ailua_dofile(task->env, L, task->arg1);
         case TASK_LUA_CALL:
-            return ailua_call(task->env, task->lua->L, task->arg1, task->arg2, task->arg3);
+            return ailua_call(task->env, L, task->arg1, task->arg2, task->arg3);
         default:
             return make_error_tuple(task->env, "invalid_command");
     }
@@ -70,7 +70,7 @@ run(task_t* task)
 void 
 task_run(task_t* task)
 {
-    msg = task_done(task, run(task));
+    ERL_NIF_TERM msg = task_done(task, run(task));
     enif_send(NULL, &(task->pid), task->env, msg);
     if(NULL != task->lua) {
         enif_release_resource(task->lua);
@@ -86,7 +86,7 @@ task_set_type(task_t* task, task_type_t type)
 void 
 task_set_pid(task_t* task,ErlNifPid pid)
 {
-    task->pid = enif_make_pid(task->env,pid);
+    task->pid = pid;
 }
 void 
 task_set_ref(task_t* task,ERL_NIF_TERM ref)
@@ -96,9 +96,9 @@ task_set_ref(task_t* task,ERL_NIF_TERM ref)
 void 
 task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2,ERL_NIF_TERM arg3)
 {
-    task->arg1 = arg1;
-    task->arg2 = arg2;
-    task->arg3 = arg3;
+    task->arg1 = enif_make_copy(task->env,arg1);
+    task->arg2 = enif_make_copy(task->env,arg2);
+    task->arg3 = enif_make_copy(task->env,arg3);
 }
 void 
 task_set_lua(task_t* task,void* res)

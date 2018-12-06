@@ -26,16 +26,14 @@ lua_worker_thread_run(void* arg)
     task_worker_t* w = (task_worker_t*) arg;
     task_t* task;
     int continue_running = 1;
-    ERL_NIF_TERM msg;
 
     w->alive = 1;
     while(continue_running) {
         task = task_queue_pop(w->q);
-
         if(NULL == task) {
             continue_running = 0;
         }else {
-   
+            task_run(task);
         }
     }
 
@@ -45,8 +43,8 @@ lua_worker_thread_run(void* arg)
 int 
 worker_alloc(task_worker_t* worker,int id)
 {
-    task_queue_t* q;
-    ErlNifThreadOpts* opts;
+    task_queue_t* q = NULL;
+    ErlNifThreadOpts* opts = NULL;
 
     q = task_queue_alloc();
     if(NULL == q ) {
@@ -78,7 +76,8 @@ worker_alloc(task_worker_t* worker,int id)
     return -1;
 }
 
-void woker_free(task_worker_t* w)
+void 
+woker_free(task_worker_t* w)
 {
     task_queue_push(w->q, NULL);
 
@@ -143,11 +142,10 @@ ERL_NIF_TERM
 add_to_pool(ErlNifEnv* env, void* lua, void* task)
 {
     task_pool_t* pool = (task_pool_t*) enif_priv_data(env);
-    int hash_idx;
- 
+
     lua_State* L = ailua_lua((ai_lua_t*)lua);
     unsigned int idx = (unsigned int)L;
-    int hash_indx = idx % pool->count;
+    int hash_idx = idx % pool->count;
 
     assert(hash_idx>=0 && hash_idx < pool->count);
     task_worker_t* w = &pool->workers[hash_idx];
