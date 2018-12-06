@@ -7,9 +7,7 @@ C_SRC_DIR = $(CURDIR)
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 C_SRC_OUTPUT ?= $(CURDIR)/../priv/ailua.so
 
-
-SOURCES = ailua.c
-OBJECTS = ailua.o
+OBJECTS = ailua.o equeue.o
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -46,10 +44,10 @@ LUA_STATICLIB := $(C_SRC_DIR)/3rd/lua/liblua.a
 LUA_LIB ?= $(LUA_STATICLIB)
 LUA_DIR ?= $(C_SRC_DIR)/3rd/lua
 
-CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)"
-CXXFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)"
+CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
+CXXFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
 
-LDLIBS += -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei -L"$(LUA_DIR)" -llua
+LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei -L"$(LUA_DIR)" -llua 
 
 
 
@@ -61,7 +59,7 @@ $(LUA_STATICLIB) :
 
 $(C_SRC_OUTPUT): $(OBJECTS)
 	@mkdir -p $(BASEDIR)/priv/
-	 $(CC) $(OBJECTS) $(LDFLAGS) -shared -fPIC $(LDLIBS) -o $(C_SRC_OUTPUT)
+	 $(CC) $(OBJECTS) $(LDFLAGS) $(LDLIBS) -o $(C_SRC_OUTPUT)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS)  $<
