@@ -480,11 +480,11 @@ gencall(ErlNifEnv *env, lua_State *L,
 {
     char buff_str[STACK_STRING_BUFF];
     char buff_fmt[STACK_STRING_BUFF];
-    char buff_fun[STACK_STRING_BUFF/2];
+    char buff_fun[STACK_STRING_BUFF];
     unsigned input_len=0;
     unsigned output_len=0;
 
-    if(enif_get_string(env, arg_func, buff_fun, STACK_STRING_BUFF/2, ERL_NIF_LATIN1)<=0){
+    if(enif_get_string(env, arg_func, buff_fun, STACK_STRING_BUFF, ERL_NIF_LATIN1)<=0){
         return enif_make_badarg(env);
     }
 
@@ -506,6 +506,9 @@ gencall(ErlNifEnv *env, lua_State *L,
     int i=0, status = 0, ret;
     ERL_NIF_TERM return_list = enif_make_list(env, 0);
     lua_getglobal(L, buff_fun);
+    //lua_getglobal(L, "test");
+    //lua_getfield(L, -1, buff_fun);
+    //lua_pushvalue(L, -2);
     const char *error;
 
     while(buff_fmt[i]!='\0') {
