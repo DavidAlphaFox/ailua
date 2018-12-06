@@ -5,7 +5,7 @@ BASEDIR := $(abspath $(CURDIR)/..)
 
 C_SRC_DIR = $(CURDIR)
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
-C_SRC_OUTPUT ?= $(CURDIR)/../priv/$(PROJECT).so
+C_SRC_OUTPUT ?= $(CURDIR)/../priv/ailua.so
 
 
 SOURCES = ailua.c

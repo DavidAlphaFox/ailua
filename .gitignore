@@ -3,7 +3,11 @@ _*
 .eunit
 *.o
 *.a
-*.so	
+*.so
+c_src/3rd/lua/lua
+c_src/3rd/lua/luac
+c_src/env.mk
+priv/*.so
 *.beam
 *.plt
 *.swp
