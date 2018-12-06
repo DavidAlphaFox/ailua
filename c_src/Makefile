@@ -57,11 +57,11 @@ LDLIBS += -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei -L"$(LUA_DIR)" -llua
 all: $(LUA_STATICLIB) $(C_SRC_OUTPUT)
 
 $(LUA_STATICLIB) :
-	@cd $(LUA_DIR) && $(MAKE) CC='$(CC) -std=gnu99' $(PLAT)
+	@cd $(LUA_DIR) && $(MAKE) CC='$(CC) -std=gnu99 -fPIC' $(PLAT)
 
 $(C_SRC_OUTPUT): $(OBJECTS)
 	@mkdir -p $(BASEDIR)/priv/
-	 $(CC) $(OBJECTS) $(LDFLAGS) -shared  $(LDLIBS) -o $(C_SRC_OUTPUT)
+	 $(CC) $(OBJECTS) $(LDFLAGS) -shared -fPIC $(LDLIBS) -o $(C_SRC_OUTPUT)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS)  $<
