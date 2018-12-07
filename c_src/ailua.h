@@ -31,7 +31,6 @@ void ailua_check_stop(ai_lua_t* ailua);
 ERL_NIF_TERM ailua_dofile(ErlNifEnv* env, ai_lua_t* ailua, const ERL_NIF_TERM arg);
 ERL_NIF_TERM ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
         const ERL_NIF_TERM arg_func,
-        const ERL_NIF_TERM arg_fmt,
         const ERL_NIF_TERM arg_list);
 ERL_NIF_TERM make_error_tuple(ErlNifEnv *env, const char *reason);
 

@@ -16,6 +16,6 @@ void ailua_task_run(task_t* task);
 void ailua_task_set_type(task_t* task, task_type_t type);
 void ailua_task_set_pid(task_t* task,ErlNifPid pid);
 void ailua_task_set_ref(task_t* task,ERL_NIF_TERM ref);
-void ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2,ERL_NIF_TERM arg3);
+void ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2);
 void ailua_task_set_lua(task_t* task,void* res);
 #endif

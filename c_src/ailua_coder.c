@@ -126,6 +126,8 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			lua_pushnumber(L,number);
 		}else if(enif_get_ulong(env,term,&number)){
 			lua_pushnumber(L,number);
+		}else {
+			return 0;
 		}
 	}else if(enif_is_list(env,term)){
 		size_t len = 0;
@@ -160,10 +162,13 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		lua_createtable(L, len, 0);
 		enif_map_iterator_create(env, term, &iter, ERL_NIF_MAP_ITERATOR_FIRST);
 		while (enif_map_iterator_get_pair(env, &iter, &key, &value)) {
-			erlang_to_lua(env,key,L);
-			erlang_to_lua(env,value,L);
-			lua_rawset(L, -3);
-    		enif_map_iterator_next(env, &iter);
+			if(erlang_to_lua(env,key,L) && erlang_to_lua(env,value,L)){
+				lua_rawset(L, -3);
+    			enif_map_iterator_next(env, &iter);
+			}else{
+				return 0;
+			}
+		
 		}
 		enif_map_iterator_destroy(env, &iter);
 	}else{

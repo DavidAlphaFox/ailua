@@ -205,7 +205,7 @@ ailua_dofile_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ailua_task_set_type(task,TASK_LUA_DOFILE);
     ailua_task_set_ref(task,argv[1]);
     ailua_task_set_pid(task,pid);
-    ailua_task_set_args(task,argv[3],0,0);
+    ailua_task_set_args(task,argv[3],0);
     ailua_task_set_lua(task,ailua);
     if(ATOM_CAS(&ailua->stop,0,0)){
         ATOM_INC(&ailua->count);
@@ -225,29 +225,39 @@ ailua_dofile_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 ERL_NIF_TERM
 ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
         const ERL_NIF_TERM arg_func,
-        const ERL_NIF_TERM arg_fmt,
         const ERL_NIF_TERM arg_list)
 {
-    char buff_str[STACK_STRING_BUFF];
-    char buff_fmt[STACK_STRING_BUFF];
     char buff_fun[STACK_STRING_BUFF];
     size_t input_len = 0;
     size_t output_len = 0;
     lua_State* L = ailua->L;
-
+    size_t table_name_length = 0;
+    size_t fun_name_length = 0;
+    char* token = NULL;
+    int invoke_self = 0;
     if(enif_get_string(env, arg_func, buff_fun, STACK_STRING_BUFF, ERL_NIF_LATIN1)<=0){
-        return enif_make_badarg(env);
-    }
-
-    if(enif_get_string(env, arg_fmt, buff_fmt, STACK_STRING_BUFF, ERL_NIF_LATIN1)<=0){
         return enif_make_badarg(env);
     }
 
     if(!enif_is_list(env, arg_list)){
         return enif_make_badarg(env);
     }
-
-   	enif_get_list_length(env,arg_list,&input_len);
+    enif_get_list_length(env,arg_list,&input_len);
+    token = strchr(buff_fun, ':');
+    if(NULL != token) {
+        table_name_length = token - buff_fun;
+        invoke_self = 1;
+    }else{
+        token = strchr(buff_fun, '.');
+        if(NULL != token){
+            table_name_length = token - buff_fun;
+        }
+       
+    }
+    if(table_name_length > 0 ){
+        fun_name_length = strlen(buff_fun) - table_name_length -1;
+        buff_fun[table_name_length] = 0;
+    }
 
     // printf("input args %d output args %d fun %s\n", input_len, output_len, buff_fun);
     ERL_NIF_TERM return_list = enif_make_list(env, 0);
@@ -256,18 +266,42 @@ ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
     int i;
     const char *error;
     list = arg_list;
-    lua_getglobal(L, buff_fun);
-    for(i = 1; i <= input_len; i++){
-        if(enif_get_list_cell(env,list,&head,&list)){
-            erlang_to_lua(env,head,L);
-        }else {
-            output_len = lua_gettop(L);
-            lua_pop(L, output_len);
+    if(table_name_length > 0){
+        const char* tfun = buff_fun + table_name_length + 1;
+        lua_getglobal(L,buff_fun);
+        if( LUA_TTABLE == lua_type(L,-1)){
+            lua_getfield(L, -1, tfun);
+            if( LUA_TFUNCTION != lua_type(L,-1)) return enif_make_badarg(env);
+            if(invoke_self > 0){
+                lua_insert(L, -2);
+            }else{
+                lua_remove(L,-2);
+            }
+        }else{
             return enif_make_badarg(env);
         }
-        
+    }else {
+        lua_getglobal(L, buff_fun);
     }
-
+     //lua_getglobal(L, "test");
+    //lua_getfield(L, -1, buff_fun);
+    //lua_pushvalue(L, -2);
+    if(input_len > 0){
+        for(i = 1; i <= input_len; i++){
+            if(enif_get_list_cell(env,list,&head,&list)){
+                if(0 == erlang_to_lua(env,head,L)){
+                    output_len = lua_gettop(L);
+                    lua_pop(L, output_len);
+                    return enif_make_badarg(env);
+                }
+            }else {
+                output_len = lua_gettop(L);
+                lua_pop(L, output_len);
+                return enif_make_badarg(env);
+            } 
+        }
+    }
+    if(invoke_self > 0) input_len++ ;
     if(lua_pcall(L, input_len, LUA_MULTRET,0) != LUA_OK) {
         error = lua_tostring(L, -1);
         lua_pop(L,1);
@@ -300,11 +334,11 @@ ailua_gencall_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    if(!enif_is_list(env, argv[3])) {
+    if(!enif_is_list(env, argv[2])) {
         return enif_make_badarg(env);
     }
 
-    return ailua_call(env, res->ailua, argv[1], argv[2], argv[3]);
+    return ailua_call(env, res->ailua, argv[1], argv[2]);
 }
 static ERL_NIF_TERM
 ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -318,7 +352,7 @@ ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    // first arg: ref
+    // first arg: lua_State
     if(!enif_get_resource(env, argv[0], RES_AILUA, (void**) &res)) {
         return enif_make_badarg(env);
     }
@@ -334,7 +368,7 @@ ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     }
 
     // fourth arg: list of input args
-    if(!enif_is_list(env, argv[5])) {
+    if(!enif_is_list(env, argv[4])) {
         return enif_make_badarg(env);
     }
     ailua = res->ailua;
@@ -345,7 +379,7 @@ ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     ailua_task_set_type(task,TASK_LUA_CALL);
     ailua_task_set_ref(task, argv[1]);
     ailua_task_set_pid(task,pid);
-    ailua_task_set_args(task,argv[3],argv[4],argv[5]);
+    ailua_task_set_args(task,argv[3],argv[4]);
     ailua_task_set_lua(task,ailua);
     if(ATOM_CAS(&ailua->stop,0,0)){
         ATOM_INC(&ailua->count);
@@ -366,8 +400,8 @@ static ErlNifFunc nif_funcs[] = {
     {"dofile_sync", 2, ailua_dofile_sync},
     {"dofile_async", 4, ailua_dofile_async},
 
-    {"gencall_sync", 4, ailua_gencall_sync},
-    {"gencall_async", 6, ailua_gencall_async}
+    {"gencall_sync", 3, ailua_gencall_sync},
+    {"gencall_async", 5, ailua_gencall_async}
 
 };
 

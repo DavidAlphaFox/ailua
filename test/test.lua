@@ -21,3 +21,13 @@ function call_with_id(id,t)
     --print(str1)
     return str
 end
+function test:in_table(id)
+    str = self._version .. ":" .. id 
+    print(str .. "\r\n")
+    return str
+end
+function test.in_table2(id)
+    str = "in_table2:" .. id 
+    print(str .. "\r\n")
+    return str
+end

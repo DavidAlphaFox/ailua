@@ -2,18 +2,19 @@
 -on_load(init/0).
 
 -export([
-        new/0,
-        dofile_sync/2,
-        dofile_async/4,
-        gencall_sync/4,
-        gencall_async/6,
-		async_dofile/2,
-		async_gencall/4
+		new/0,
+		dofile/2,
+		async_dofile/4,
+		call/3,
+		async_call/5,
+
+		dofile_and_wait/2,
+		call_and_wait/3
     ]).
 
 -define(APPNAME,ailua).
 -define(LIBNAME,ailua).
-
+-define(MAX_UINT64,18446744073709551615).
 
 wait(Ref, Timeout) ->
   receive
@@ -23,16 +24,26 @@ wait(Ref, Timeout) ->
   end.
 
 
-async_dofile(L,FilePath) ->
+dofile_and_wait(L,FilePath) ->
   Ref = make_ref(),
   ok = dofile_async(L,Ref,self(),FilePath),
   wait(Ref, 100000).
 
 
-async_gencall(L,Func,Format,InArgs) ->
+call_and_wait(L,Func,Args) ->
   Ref = make_ref(),
-  ok = gencall_async(L,Ref,self(),Func,Format,InArgs),
+  NewArgs = process_list(Args,[]),
+  ok = gencall_async(L,Ref,self(),Func,NewArgs),
   wait(Ref, 100000).
+
+dofile(L,FilePath)-> dofile_sync(L,FilePath).
+async_dofile(L,Ref,Pid,FilePath) -> dofile_async(L,Ref,Pid,FilePath).
+call(L,FunName,Args)->
+	NewArgs = process_list(Args,[]),
+	gencall_sync(L,FunName,NewArgs).
+async_call(L,Ref,Pid,FunName,Args)->
+	NewArgs = process_list(Args,[]),
+	gencall_async(L,Ref,Pid,FunName,NewArgs).
 
 init() ->
   LibName =
@@ -59,7 +70,41 @@ dofile_sync(_L,_FilePath) ->
 dofile_async(_L,_Ref,_Dest,_FilePath) ->
   not_loaded(?LINE).
 
-gencall_sync(_L,_Func,_Format,_InArgs) ->
+gencall_sync(_L,_Func,_InArgs) ->
   not_loaded(?LINE).
-gencall_async(_L,_Ref,_Dest,_Func,_Format,_InArgs) ->
+gencall_async(_L,_Ref,_Dest,_Func,_InArgs) ->
   not_loaded(?LINE).
+
+process_list([],Acc)->lists:reverse(Acc);
+process_list([H|T],Acc) when erlang:is_integer(H)->
+	H0 = process_item(H),
+	process_list(T,[H0|Acc]);
+process_list([H|T],Acc) when erlang:is_list(H)->
+	H0 = process_item(H),
+	process_list(T,[H0|Acc]);
+process_list([H|T],Acc) when erlang:is_map(H)->
+	H0 = process_item(H),
+process_list(T,[H0|Acc]);
+process_list([H|T],Acc)-> process_list(T,[H|Acc]).
+
+process_item(Item) when erlang:is_integer(Item)->
+	if 
+		Item > ?MAX_UINT64 -> erlang:integer_to_binary(Item);
+		true ->Item
+	end;
+process_item(Item) when erlang:is_list(Item)->
+	case io_lib:printable_list(Item)  of 
+		true -> Item;
+		false -> process_list(Item,[])
+	end;
+process_item(Item) when erlang:is_map(Item)->
+	I = maps:iterator(Item),
+	process_map(maps:next(I),#{});
+process_item(Item)-> Item.
+
+process_map(none,Acc)-> Acc;
+process_map({K, V, I},Acc)->
+	K0 = process_item(K),
+	V0 = process_item(V),
+	process_map(maps:next(I),maps:put(K0,V0,Acc)).
+

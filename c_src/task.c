@@ -12,7 +12,6 @@ struct _task
 
     ERL_NIF_TERM arg1;
     ERL_NIF_TERM arg2;
-    ERL_NIF_TERM arg3;
 
 };
 static ERL_NIF_TERM
@@ -44,7 +43,6 @@ ailua_task_alloc(void)
     task->ref = 0;
     task->arg1 = 0;
     task->arg2 = 0;
-    task->arg3 = 0;
     return task;
 }
 void 
@@ -64,7 +62,7 @@ do_task(task_t* task)
         case TASK_LUA_DOFILE:
             return ailua_dofile(task->env, task->ailua, task->arg1);
         case TASK_LUA_CALL:
-            return ailua_call(task->env, task->ailua, task->arg1, task->arg2, task->arg3);
+            return ailua_call(task->env, task->ailua, task->arg1, task->arg2);
         default:
             return make_error_tuple(task->env, "invalid_command");
     }
@@ -98,19 +96,14 @@ ailua_task_set_ref(task_t* task,ERL_NIF_TERM ref)
     task->ref = enif_make_copy(task->env, ref);
 }
 void 
-ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2,ERL_NIF_TERM arg3)
+ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2)
 {
     if(0 != arg1){
         task->arg1 = enif_make_copy(task->env,arg1);
     }
     if(0 != arg2){
         task->arg2 = enif_make_copy(task->env,arg2);
-    }
-    if(0 != arg3){
-        task->arg3 = enif_make_copy(task->env,arg3);
-    }
-    
-    
+    }    
 }
 void 
 ailua_task_set_lua(task_t* task,void* res)
