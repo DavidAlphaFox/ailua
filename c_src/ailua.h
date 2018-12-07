@@ -23,6 +23,9 @@ ERL_NIF_TERM atom_ok;
 ERL_NIF_TERM atom_error;
 ERL_NIF_TERM atom_ailua;
 ERL_NIF_TERM atom_undefined;
+ERL_NIF_TERM atom_nil;
+ERL_NIF_TERM atom_true;
+ERL_NIF_TERM atom_false;
 
 void ailua_check_stop(ai_lua_t* ailua);
 ERL_NIF_TERM ailua_dofile(ErlNifEnv* env, ai_lua_t* ailua, const ERL_NIF_TERM arg);

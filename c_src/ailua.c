@@ -2,7 +2,7 @@
 #include "ailua.h"
 #include "task.h"
 #include "task_pool.h"
-
+#include "ailua_coder.h"
 #include "ailua_atomic.h"
 
 #define STACK_STRING_BUFF 255
@@ -97,6 +97,9 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
     atom_ailua = enif_make_atom(env,"ailua");
     atom_error = enif_make_atom(env, "error");
     atom_undefined = enif_make_atom(env,"undefined");
+    atom_nil = enif_make_atom(env,"nil");
+    atom_true = enif_make_atom(env,"true");
+    atom_false = enif_make_atom(env,"false");
     enif_system_info(&sys_info,sizeof(ErlNifSysInfo));
     int max_thread_workers =  sys_info.scheduler_threads / 2;
     if(max_thread_workers < 1) max_thread_workers = 1;
@@ -228,8 +231,8 @@ ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
     char buff_str[STACK_STRING_BUFF];
     char buff_fmt[STACK_STRING_BUFF];
     char buff_fun[STACK_STRING_BUFF];
-    unsigned input_len=0;
-    unsigned output_len=0;
+    size_t input_len = 0;
+    size_t output_len = 0;
     lua_State* L = ailua->L;
 
     if(enif_get_string(env, arg_func, buff_fun, STACK_STRING_BUFF, ERL_NIF_LATIN1)<=0){
@@ -244,113 +247,46 @@ ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
         return enif_make_badarg(env);
     }
 
-    input_len = strchr(buff_fmt, ':') - buff_fmt;
-    output_len = strlen(buff_fmt) - input_len -1;
+   	enif_get_list_length(env,arg_list,&input_len);
 
     // printf("input args %d output args %d fun %s\n", input_len, output_len, buff_fun);
-    ERL_NIF_TERM head,tail,list;
-    list=arg_list;
-
-    int i=0, status = 0, ret;
     ERL_NIF_TERM return_list = enif_make_list(env, 0);
-    lua_getglobal(L, buff_fun);
-    //lua_getglobal(L, "test");
-    //lua_getfield(L, -1, buff_fun);
-    //lua_pushvalue(L, -2);
+    ERL_NIF_TERM term;
+    ERL_NIF_TERM head,tail,list;
+    int i;
     const char *error;
-
-    while(buff_fmt[i]!='\0') {
-        // printf("i:%d %c\n", i, buff_fmt[i]);
-
-        if(status==0 && buff_fmt[i]!=':') {
-            ret = enif_get_list_cell(env, list, &head, &tail);
-            if(!ret) {
-                error = FMT_AND_LIST_NO_MATCH;
-                goto error;
-            }
-            list=tail;
+    list = arg_list;
+    lua_getglobal(L, buff_fun);
+    for(i = 1; i <= input_len; i++){
+        if(enif_get_list_cell(env,list,&head,&list)){
+            erlang_to_lua(env,head,L);
+        }else {
+            output_len = lua_gettop(L);
+            lua_pop(L, output_len);
+            return enif_make_badarg(env);
         }
-
-        switch(buff_fmt[i]) {
-        case ':' :
-            status=1;
-            if(lua_pcall(L, input_len, output_len,0) != LUA_OK) {
-                error = lua_tostring(L, -1);
-                lua_pop(L,1);
-                return enif_make_tuple2(env, atom_error, enif_make_string(env, error, ERL_NIF_LATIN1));
-            }
-            //output_len = - 1;
-            break;
-        case 'i':
-            if( status == 0) {
-                int input_int;
-                ret = enif_get_int(env, head, &input_int);
-                // printf("input %d\n", input_int);
-                if(!ret) {
-                    error = FMT_AND_LIST_NO_MATCH;
-                    goto error;
-                }
-
-                lua_pushinteger(L, input_int);
-            } else if ( status==1 ){
-                int isnum;
-                int n = lua_tointegerx(L, -1, &isnum);
-                if(!isnum){
-                    error = FMT_AND_LIST_NO_MATCH;
-                    goto error;
-                }
-                // printf("output %d %d\n", output_len, n);
-                return_list = enif_make_list_cell(env, enif_make_int(env, n), return_list);
-                lua_pop(L,1);
-                output_len--;
-            }
-            break;
-        case 's':
-            if( status == 0) {
-                ret = enif_get_string(env, head, buff_str, STACK_STRING_BUFF, ERL_NIF_LATIN1);
-                if(ret<=0) {
-                    error = FMT_AND_LIST_NO_MATCH;
-                    goto error;
-                }
-                lua_pushstring(L, buff_str);
-
-            } else if ( status==1 ) {
-                const char *s = lua_tostring(L, -1);
-                if (s==NULL) {
-                    error = FMT_AND_RET_NO_MATCH;
-                    goto error;
-                }
-                // printf("output %d %s\n", output_len, s);
-                return_list = enif_make_list_cell(env, enif_make_string(env, s, ERL_NIF_LATIN1), return_list);
-                lua_pop(L,1);
-                output_len--;
-            }
-            break;
-            /* case 'd': */
-            /*     break; */
-            /* case 'b': */
-            /*     break; */
-        default:
-            error = FMT_WRONG;
-            goto error;
-            break;
-        }
-
-        i++;
+        
     }
-    return enif_make_tuple2(env, atom_ok, return_list);
 
- error:
-    // printf("in error \n");
-    // @fix clean the heap var.
-    // before call, pop the call
-    if(status ==0 ) {
-        lua_pop(L, 1);
+    if(lua_pcall(L, input_len, LUA_MULTRET,0) != LUA_OK) {
+        error = lua_tostring(L, -1);
+        lua_pop(L,1);
+        return enif_make_tuple2(env, atom_error, enif_make_string(env, error, ERL_NIF_LATIN1));
     }
-    else if(output_len>0) {
+    output_len = lua_gettop(L);
+    if(output_len == 0){
+        return atom_ok;
+    }else{
+        for (i = output_len; i >= 1; i--) {
+			lua_to_erlang(env,&term,L,i);
+            return_list = enif_make_list_cell(env, term, return_list);
+		}
         lua_pop(L, output_len);
+        return enif_make_tuple2(env, atom_ok, return_list);
     }
-
+    
+    output_len = lua_gettop(L);
+    lua_pop(L, output_len);
     return make_error_tuple(env, error);
 }
 

@@ -7,7 +7,7 @@ C_SRC_DIR = $(CURDIR)
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 C_SRC_OUTPUT ?= $(CURDIR)/../priv/ailua.so
 
-OBJECTS = task.o task_queue.o task_pool.o ailua.o 
+OBJECTS = task.o task_queue.o task_pool.o ailua.o ailua_coder.o
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
