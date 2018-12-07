@@ -3,12 +3,12 @@
 
 struct _task
 {
-    ai_lua_t* lua;
+    ai_lua_t* ailua;
     task_type_t type;
 
     ErlNifEnv* env;
     ERL_NIF_TERM ref;
-    ErlNifPid pid;
+    ERL_NIF_TERM pid;
 
     ERL_NIF_TERM arg1;
     ERL_NIF_TERM arg2;
@@ -22,7 +22,7 @@ task_done(task_t* task, ERL_NIF_TERM result)
 }
 
 task_t*
-task_alloc()
+ailua_task_alloc(void)
 {
     ErlNifEnv* env;
     task_t* task;
@@ -40,14 +40,15 @@ task_alloc()
 
     task->env = env;
     task->type = TASK_UNDEFINED;
+    task->pid = 0;
     task->ref = 0;
-    task->arg1 = atom_undefined;
-    task->arg2 = atom_undefined;
-    task->arg3 = atom_undefined;
+    task->arg1 = 0;
+    task->arg2 = 0;
+    task->arg3 = 0;
     return task;
 }
 void 
-task_free(task_t* task)
+ailua_task_free(task_t* task)
 {
     if(NULL != task->env){
         enif_free_env(task->env);
@@ -56,54 +57,63 @@ task_free(task_t* task)
 }
 
 ERL_NIF_TERM
-run(task_t* task)
+do_task(task_t* task)
 {
-    lua_State* L = NULL;
-    if(NULL != task->lua) L = ailua_lua(task->lua);
+    if(NULL == task->ailua) return make_error_tuple(task->env, "invalid_context");
     switch(task->type) {
         case TASK_LUA_DOFILE:
-            return ailua_dofile(task->env, L, task->arg1);
+            return ailua_dofile(task->env, task->ailua, task->arg1);
         case TASK_LUA_CALL:
-            return ailua_call(task->env, L, task->arg1, task->arg2, task->arg3);
+            return ailua_call(task->env, task->ailua, task->arg1, task->arg2, task->arg3);
         default:
             return make_error_tuple(task->env, "invalid_command");
     }
 }
 void 
-task_run(task_t* task)
+ailua_task_run(task_t* task)
 {
-    ERL_NIF_TERM msg = task_done(task, run(task));
-    enif_send(NULL, &(task->pid), task->env, msg);
-    if(NULL != task->lua) {
-        enif_release_resource(task->lua);
+    ERL_NIF_TERM msg = task_done(task, do_task(task));
+    ErlNifPid pid;
+    if(0 != task->pid){
+        enif_get_local_pid(task->env, task->pid, &pid);
+        enif_send(NULL, &pid, task->env, msg);
     }
-    task_free(task);
+    ailua_check_stop(task->ailua);
+    ailua_task_free(task);
 }
       
 void 
-task_set_type(task_t* task, task_type_t type)
+ailua_task_set_type(task_t* task, task_type_t type)
 {
     task->type = type;
 }
 void 
-task_set_pid(task_t* task,ErlNifPid pid)
+ailua_task_set_pid(task_t* task,ErlNifPid pid)
 {
-    task->pid = pid;
+    task->pid = enif_make_pid(task->env,&pid);
 }
 void 
-task_set_ref(task_t* task,ERL_NIF_TERM ref)
+ailua_task_set_ref(task_t* task,ERL_NIF_TERM ref)
 {
     task->ref = enif_make_copy(task->env, ref);
 }
 void 
-task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2,ERL_NIF_TERM arg3)
+ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2,ERL_NIF_TERM arg3)
 {
-    task->arg1 = enif_make_copy(task->env,arg1);
-    task->arg2 = enif_make_copy(task->env,arg2);
-    task->arg3 = enif_make_copy(task->env,arg3);
+    if(0 != arg1){
+        task->arg1 = enif_make_copy(task->env,arg1);
+    }
+    if(0 != arg2){
+        task->arg2 = enif_make_copy(task->env,arg2);
+    }
+    if(0 != arg3){
+        task->arg3 = enif_make_copy(task->env,arg3);
+    }
+    
+    
 }
 void 
-task_set_lua(task_t* task,void* res)
+ailua_task_set_lua(task_t* task,void* res)
 {
-    task->lua = (ai_lua_t*)res;   
+    task->ailua = (ai_lua_t*)res;
 }

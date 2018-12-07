@@ -33,7 +33,7 @@ lua_worker_thread_run(void* arg)
         if(NULL == task) {
             continue_running = 0;
         }else {
-            task_run(task);
+            ailua_task_run(task);
         }
     }
 
@@ -142,17 +142,22 @@ ERL_NIF_TERM
 add_to_pool(ErlNifEnv* env, void* lua, void* task)
 {
     task_pool_t* pool = (task_pool_t*) enif_priv_data(env);
+    ai_lua_t* ailua = (ai_lua_t*)lua;
+    int hash_idx = 0;
+    if(ailua->binding < 0 ){
+        unsigned int idx = (unsigned int)(ailua->L);
+        hash_idx = idx % pool->count;
+        ailua->binding = hash_idx;
+    }else{
+        hash_idx = ailua->binding;
+    }
 
-    lua_State* L = ailua_lua((ai_lua_t*)lua);
-    unsigned int idx = (unsigned int)L;
-    int hash_idx = idx % pool->count;
 
     assert(hash_idx>=0 && hash_idx < pool->count);
     task_worker_t* w = &pool->workers[hash_idx];
-    enif_keep_resource(lua);
 
     if(!task_queue_push(w->q, (task_t*)task)){
-        enif_release_resource(lua);
+        
         return make_error_tuple(env, "task_schedule_failed");
     }
     return atom_ok;

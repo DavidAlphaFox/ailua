@@ -3,6 +3,8 @@
 #include "task.h"
 #include "task_pool.h"
 
+#include "ailua_atomic.h"
+
 #define STACK_STRING_BUFF 255
 
 #define STR_NOT_ENOUGHT_MEMORY "not_enough_memory"
@@ -11,17 +13,44 @@
 #define FMT_AND_RET_NO_MATCH  "fmt and ret not match"
 #define FMT_WRONG  "format wrong"
 
-struct _ai_lua
-{
-    int id;
-    lua_State *L;
 
-};
-lua_State*
-ailua_lua(ai_lua_t* ailua)
+struct _ai_lua_res
 {
+    ai_lua_t* ailua;
+};
+
+static ai_lua_t*
+ailua_alloc()
+{
+    ai_lua_t* ailua = enif_alloc(sizeof(ai_lua_t));
     if(NULL == ailua) return NULL;
-    return ailua->L;
+    lua_State* L = luaL_newstate();
+    if(NULL == L) {
+        enif_free(ailua);
+    }
+    luaL_openlibs(L);
+    ailua->L = L;
+    ailua->stop = 0;
+    ailua->binding = -1;
+    return ailua;
+}
+
+void 
+ailua_check_stop(ai_lua_t* ailua)
+{
+    //此处只有工作线程会执行
+    int on_fly = ATOM_DEC(&ailua->count);
+    bool stop = ATOM_CAS(&ailua->stop,1,1);
+    if(stop){
+        if(0 == on_fly){
+            if(NULL != ailua->L){
+                lua_close(ailua->L);
+            }
+            
+            enif_free(ailua);
+        }
+
+    }
 }
 
 ERL_NIF_TERM
@@ -31,14 +60,23 @@ make_error_tuple(ErlNifEnv *env, const char *reason)
 }
 
 
-void
-free_ailua(ErlNifEnv* env, void* obj)
+static void
+free_ailua_res(ErlNifEnv* env, void* obj)
 {
     // 释放lua
-    ai_lua_t *res = (ai_lua_t *)obj;
+    // 此刻是竞态，需要处理
+    struct _ai_lua_res* res = (struct _ai_lua_res *)obj;
+    ai_lua_t* ailua;
     if (NULL == res) return;
-    if (NULL != res-> L){
-        lua_close(res->L);
+    if (NULL != res-> ailua){
+        ailua = res->ailua;
+        ATOM_CAS(&ailua->stop,0,1);
+        if(ATOM_CAS(&ailua->count,0,0)){
+            if(NULL != ailua->L){
+                lua_close(ailua->L);
+            }
+            enif_free(ailua);
+        }
     }
 }
 
@@ -50,8 +88,8 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
     int flags = ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER;
     ErlNifSysInfo sys_info;
 
-    RES_LUA = enif_open_resource_type(env, mod, ailua_res, free_ailua, flags, NULL);
-    if(RES_LUA == NULL) return -1;
+    RES_AILUA = enif_open_resource_type(env, mod, ailua_res, free_ailua_res, flags, NULL);
+    if(RES_AILUA == NULL) return -1;
 
     atom_ok = enif_make_atom(env, "ok");
     atom_ailua = enif_make_atom(env,"ailua");
@@ -59,6 +97,7 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
     atom_undefined = enif_make_atom(env,"undefined");
     enif_system_info(&sys_info,sizeof(ErlNifSysInfo));
     int max_thread_workers =  sys_info.scheduler_threads / 2;
+    if(max_thread_workers < 1) max_thread_workers = 1;
     task_pool_t* pool = pool_alloc(max_thread_workers);
     if(NULL == pool) return -1;
     *priv = (void*) pool;
@@ -71,23 +110,19 @@ static ERL_NIF_TERM
 ailua_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     ERL_NIF_TERM ret;
-    lua_State* L;
-    ai_lua_t* res;
-
-    L = luaL_newstate();
-    if(NULL == L) {
+    struct _ai_lua_res* res;
+    ai_lua_t* ailua = ailua_alloc();
+    if(NULL == ailua){
         return enif_make_tuple2(env, atom_error, enif_make_string(env, STR_NOT_ENOUGHT_MEMORY, ERL_NIF_LATIN1));
     }
 
-    luaL_openlibs(L);
-
-    res = enif_alloc_resource(RES_LUA, sizeof(struct _ai_lua));
+    res = enif_alloc_resource(RES_AILUA, sizeof(struct _ai_lua_res));
     if(NULL == res) return enif_make_badarg(env);
 
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
 
-    res->L = L;
+    res->ailua = ailua;
 
     return enif_make_tuple2(env, atom_ok, ret);
 };
@@ -95,8 +130,9 @@ ailua_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 
 ERL_NIF_TERM
-ailua_dofile(ErlNifEnv* env, lua_State* L, const ERL_NIF_TERM arg)
+ailua_dofile(ErlNifEnv* env, ai_lua_t* ailua, const ERL_NIF_TERM arg)
 {
+    lua_State* L = ailua->L;
     char buff_str[STACK_STRING_BUFF];
     int size = enif_get_string(env, arg, buff_str, STACK_STRING_BUFF, ERL_NIF_LATIN1);
     if(size <= 0) {
@@ -115,64 +151,74 @@ ailua_dofile(ErlNifEnv* env, lua_State* L, const ERL_NIF_TERM arg)
 static ERL_NIF_TERM
 ailua_dofile_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ai_lua_t* res;
+    struct _ai_lua_res* res;
 
     if(argc != 2) {
         return enif_make_badarg(env);
     }
 
     // first arg: res
-    if(!enif_get_resource(env, argv[0], RES_LUA, (void**) &res)) {
+    if(!enif_get_resource(env, argv[0], RES_AILUA, (void**) &res)) {
         return enif_make_badarg(env);
     }
 
-    return ailua_dofile(env,res->L, argv[1]);
+    return ailua_dofile(env,res->ailua, argv[1]);
 }
 
 
 static ERL_NIF_TERM
 ailua_dofile_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ai_lua_t* res;
+    struct _ai_lua_res* res;
+    ai_lua_t* ailua;
     task_t* task;
     ErlNifPid pid;
-
+    ERL_NIF_TERM term;
     if(argc != 4) {
         return enif_make_badarg(env);
     }
 
     // first arg: res
-    if(!enif_get_resource(env, argv[0], RES_LUA, (void**) &res)) {
+    if(!enif_get_resource(env, argv[0], RES_AILUA, (void**) &res)) {
         return enif_make_badarg(env);
     }
 
     // ref
     if(!enif_is_ref(env, argv[1])){
-        return make_error_tuple(env, "invalid_ref");
+        return enif_make_badarg(env);
     }
 
     // dest pid
     if(!enif_get_local_pid(env, argv[2], &pid)) {
-        return make_error_tuple(env, "invalid_pid");
+        return enif_make_badarg(env);
     }
-
-    task = task_alloc();
+    ailua = res->ailua;
+    task = ailua_task_alloc();
     if(NULL == task) {
         return make_error_tuple(env, "task_alloc_failed");
     }
-    task_set_type(task,TASK_LUA_DOFILE);
-    task_set_ref(task,argv[1]);
-    task_set_pid(task,pid);
-    task_set_args(task,argv[3],atom_undefined,atom_undefined);
-    task_set_lua(task,res);
-    return add_to_pool(env, res, task);
+    ailua_task_set_type(task,TASK_LUA_DOFILE);
+    ailua_task_set_ref(task,argv[1]);
+    ailua_task_set_pid(task,pid);
+    ailua_task_set_args(task,argv[3],0,0);
+    ailua_task_set_lua(task,ailua);
+    if(ATOM_CAS(&ailua->stop,0,0)){
+        ATOM_INC(&ailua->count);
+        term = add_to_pool(env, ailua, task);
+        if(term != atom_ok){
+            ATOM_DEC(&ailua->count);
+        }
+        return term;
+    }
+    
+    return make_error_tuple(env, "task_binding_failed");
 }
 
 
 
 
 ERL_NIF_TERM
-ailua_call(ErlNifEnv *env, lua_State *L,
+ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
         const ERL_NIF_TERM arg_func,
         const ERL_NIF_TERM arg_fmt,
         const ERL_NIF_TERM arg_list)
@@ -182,6 +228,7 @@ ailua_call(ErlNifEnv *env, lua_State *L,
     char buff_fun[STACK_STRING_BUFF];
     unsigned input_len=0;
     unsigned output_len=0;
+    lua_State* L = ailua->L;
 
     if(enif_get_string(env, arg_func, buff_fun, STACK_STRING_BUFF, ERL_NIF_LATIN1)<=0){
         return enif_make_badarg(env);
@@ -308,10 +355,10 @@ ailua_call(ErlNifEnv *env, lua_State *L,
 static ERL_NIF_TERM
 ailua_gencall_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ai_lua_t *res;
+    struct _ai_lua_res* res;
 
     // first arg: ref
-    if(!enif_get_resource(env, argv[0], RES_LUA,(void**) &res)) {
+    if(!enif_get_resource(env, argv[0], RES_AILUA,(void**) &res)) {
         return enif_make_badarg(env);
     }
 
@@ -319,50 +366,58 @@ ailua_gencall_sync(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
         return enif_make_badarg(env);
     }
 
-    return ailua_call(env, res->L, argv[1], argv[2], argv[3]);
+    return ailua_call(env, res->ailua, argv[1], argv[2], argv[3]);
 }
 static ERL_NIF_TERM
 ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ai_lua_t* res;
+    struct _ai_lua_res* res;
+    ai_lua_t* ailua;
     task_t* task;
     ErlNifPid pid;
-
+    ERL_NIF_TERM term ;
     if(argc != 6) {
         return enif_make_badarg(env);
     }
 
     // first arg: ref
-    if(!enif_get_resource(env, argv[0], RES_LUA, (void**) &res)) {
+    if(!enif_get_resource(env, argv[0], RES_AILUA, (void**) &res)) {
         return enif_make_badarg(env);
     }
 
     // ref
     if(!enif_is_ref(env, argv[1])) {
-        return make_error_tuple(env, "invalid_ref");
+        return enif_make_badarg(env);
     }
 
     // dest pid
     if(!enif_get_local_pid(env, argv[2], &pid)) {
-        return make_error_tuple(env, "invalid_pid");
+        return enif_make_badarg(env);
     }
 
     // fourth arg: list of input args
     if(!enif_is_list(env, argv[5])) {
         return enif_make_badarg(env);
     }
-
-    task = task_alloc();
+    ailua = res->ailua;
+    task = ailua_task_alloc();
     if(NULL == task) {
         return make_error_tuple(env, "task_alloc_failed");
     }
-    task_set_type(task,TASK_LUA_CALL);
-    task_set_ref(task, argv[1]);
-    task_set_pid(task,pid);
-    task_set_args(task,argv[3],argv[4],argv[5]);
-    task_set_lua(task,res);
-
-    return add_to_pool(env, res, task);
+    ailua_task_set_type(task,TASK_LUA_CALL);
+    ailua_task_set_ref(task, argv[1]);
+    ailua_task_set_pid(task,pid);
+    ailua_task_set_args(task,argv[3],argv[4],argv[5]);
+    ailua_task_set_lua(task,ailua);
+    if(ATOM_CAS(&ailua->stop,0,0)){
+        ATOM_INC(&ailua->count);
+        term = add_to_pool(env, ailua, task);
+        if(term != atom_ok){
+            ATOM_DEC(&ailua->count);
+        }
+        return term;
+    }
+    return make_error_tuple(env, "task_binding_failed");
 }
 
 
