@@ -70,7 +70,9 @@ free_ailua_res(ErlNifEnv* env, void* obj)
     if (NULL == res) return;
     if (NULL != res-> ailua){
         ailua = res->ailua;
-        ATOM_CAS(&ailua->stop,0,1);
+        // 此处不应该发生return，一定是true
+        bool stopped = ATOM_CAS(&ailua->stop,0,1);
+        assert(stopped == true && "fail on stoping lua");
         if(ATOM_CAS(&ailua->count,0,0)){
             if(NULL != ailua->L){
                 lua_close(ailua->L);
