@@ -1,4 +1,5 @@
 test = { _version = "0.1.1" }
+_ERL_MAP = {}
 function test.hello(self)
     print("hello from ailua" .. self._version)
 end
@@ -29,5 +30,15 @@ end
 function test.in_table2(id)
     str = "in_table2:" .. id 
     print(str .. "\r\n")
-    return str
+    return {"a","bc","cd"}
+end
+
+
+function erl_map(t)
+    if type(t) == 'table' then
+        t[_ERL_MAP] = true
+        return t
+	else
+		error[[bad argument #1 to 'erl_map' (table expected)]]
+    end
 end

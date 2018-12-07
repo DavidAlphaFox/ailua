@@ -18,6 +18,16 @@ struct _ai_lua_res
 {
     ai_lua_t* ailua;
 };
+static const char *erl_functions_s = ""
+" _ERL_MAP = {}"
+" "
+" function erl_map(t)"
+"	if type(t) == 'table' then"
+"		return t[_ERL_MAP] = true"
+"	else"
+"		error[[bad argument #1 to 'erl_map' (table expected)]]"
+"	end"
+" end";
 
 static ai_lua_t*
 ailua_alloc()
@@ -29,6 +39,11 @@ ailua_alloc()
         enif_free(ailua);
     }
     luaL_openlibs(L);
+    /*if(luaL_dostring(L, erl_functions_s) != LUA_OK){
+        lua_close(L);
+        enif_free(ailua);
+        return NULL;
+    }*/
     ailua->L = L;
     ailua->stop = 0;
     ailua->binding = -1;

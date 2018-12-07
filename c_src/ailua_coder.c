@@ -70,7 +70,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 				for (k = 1; k <= len; k++) {
 					lua_rawgeti(L, i, k);
 					if(lua_to_erlang(env,&term,L,lua_gettop(L))){
-						arr[k - 1] = term; 
+						arr[k -1 ] = term; 
 						lua_pop(L, 1);
 					}else{
 						lua_pop(L, 1);
