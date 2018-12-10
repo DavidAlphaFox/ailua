@@ -2,9 +2,11 @@ test = { _version = "0.1.1" }
 function test.hello(self)
     print("hello from ailua" .. self._version)
 end
-function hi()
-    print("hi there")
+function hi(table)
+    print("hi there \r\n")
+    return table
 end
+
 function fib(n)
     if n < 2 then return 1 end
     return fib(n - 2) + fib(n - 1)

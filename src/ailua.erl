@@ -98,13 +98,11 @@ process_item(Item) when erlang:is_list(Item)->
 		false -> process_list(Item,[])
 	end;
 process_item(Item) when erlang:is_map(Item)->
-	I = maps:iterator(Item),
-	process_map(maps:next(I),#{});
+	M = maps:to_list(Item),
+	lists:foldl(fun({K,V},Acc) -> 
+			K0 = process_item(K),
+			V0 = process_item(V),
+			maps:put(K0,V0,Acc)
+		end,#{},M);
 process_item(Item)-> Item.
-
-process_map(none,Acc)-> Acc;
-process_map({K, V, I},Acc)->
-	K0 = process_item(K),
-	V0 = process_item(V),
-	process_map(maps:next(I),maps:put(K0,V0,Acc)).
 
