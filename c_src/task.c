@@ -3,7 +3,7 @@
 
 struct _task
 {
-    ai_lua_t* ailua;
+    ailua_t* ailua;
     task_type_t type;
 
     ErlNifEnv* env;
@@ -108,5 +108,5 @@ ailua_task_set_args(task_t* task,ERL_NIF_TERM arg1,ERL_NIF_TERM arg2)
 void 
 ailua_task_set_lua(task_t* task,void* res)
 {
-    task->ailua = (ai_lua_t*)res;
+    task->ailua = (ailua_t*)res;
 }

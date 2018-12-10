@@ -142,7 +142,7 @@ ERL_NIF_TERM
 add_to_pool(ErlNifEnv* env, void* lua, void* task)
 {
     task_pool_t* pool = (task_pool_t*) enif_priv_data(env);
-    ai_lua_t* ailua = (ai_lua_t*)lua;
+    ailua_t* ailua = (ailua_t*)lua;
     int hash_idx = 0;
     if(ailua->binding < 0 ){
         unsigned int idx = (unsigned int)(ailua->L);

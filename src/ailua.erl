@@ -3,6 +3,7 @@
 
 -export([
 		new/0,
+		new/1,
 		dofile/2,
 		async_dofile/4,
 		call/3,
@@ -70,6 +71,8 @@ not_loaded(Line) ->
 %% some lua api
 new() ->
   not_loaded(?LINE).
+new(_Path)->
+	not_loaded(?LINE).
 
 dofile_sync(_L,_FilePath) ->
   not_loaded(?LINE).

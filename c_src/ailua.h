@@ -15,7 +15,7 @@ typedef struct
     int stop;
     int count;
     lua_State* L;
-} ai_lua_t;
+} ailua_t;
 
 
 ErlNifResourceType *RES_AILUA;
@@ -27,9 +27,9 @@ ERL_NIF_TERM atom_nil;
 ERL_NIF_TERM atom_true;
 ERL_NIF_TERM atom_false;
 
-void ailua_check_stop(ai_lua_t* ailua);
-ERL_NIF_TERM ailua_dofile(ErlNifEnv* env, ai_lua_t* ailua, const ERL_NIF_TERM arg);
-ERL_NIF_TERM ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
+void ailua_check_stop(ailua_t* ailua);
+ERL_NIF_TERM ailua_dofile(ErlNifEnv* env, ailua_t* ailua, const ERL_NIF_TERM arg);
+ERL_NIF_TERM ailua_call(ErlNifEnv *env, ailua_t* ailua,
         const ERL_NIF_TERM arg_func,
         const ERL_NIF_TERM arg_list);
 ERL_NIF_TERM make_error_tuple(ErlNifEnv *env, const char *reason);

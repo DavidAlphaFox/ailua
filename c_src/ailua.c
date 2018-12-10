@@ -16,7 +16,7 @@
 
 struct _ai_lua_res
 {
-    ai_lua_t* ailua;
+    ailua_t* ailua;
 };
 static const char *erl_functions_s = ""
 " function to_erl_map(t)"
@@ -29,10 +29,32 @@ static const char *erl_functions_s = ""
 "	end"
 " end";
 
-static ai_lua_t*
+static int 
+set_lua_path( lua_State* L, const char* path,size_t path_len )
+{
+    size_t len = 0;
+    lua_getglobal( L, "package" );
+    lua_getfield( L, -1, "path" ); // get field "path" from table at top of stack (-1)
+    const char *s = lua_tolstring(L, -1, &len); // grab path string from top of stack
+    const char *buffer = enif_alloc(path_len + len + 1);
+    if(NULL == buffer){
+        lua_pop(L,2);
+        return 0;
+    }
+    memset(buffer,0,path_len + len + 1);
+    strncpy(buffer,s,len);
+    strncpy(buffer + len ,path,path_len);
+    lua_pop( L, 1 ); // get rid of the string on the stack we just pushed on line 5
+    lua_pushstring( L, buffer); // push the new one
+    lua_setfield( L, -2, "path" ); // set the field "path" in table at -2 with value at top of stack
+    lua_pop( L, 1 ); // get rid of package table from top of stack
+    enif_free(buffer);
+    return 1; // all done!
+}
+static ailua_t*
 ailua_alloc()
 {
-    ai_lua_t* ailua = enif_alloc(sizeof(ai_lua_t));
+    ailua_t* ailua = enif_alloc(sizeof(ailua_t));
     if(NULL == ailua) return NULL;
     lua_State* L = luaL_newstate();
     if(NULL == L) {
@@ -50,8 +72,20 @@ ailua_alloc()
     return ailua;
 }
 
+static ailua_t* 
+ailua_init(ailua_t* ailua,char* path,size_t path_len)
+{
+    if(set_lua_path(ailua->L,path,path_len) == 0){
+
+        lua_close(ailua->L);
+        enif_free(ailua);
+        return NULL;
+    }
+    return ailua;
+}
+
 void 
-ailua_check_stop(ai_lua_t* ailua)
+ailua_check_stop(ailua_t* ailua)
 {
     //此处只有工作线程会执行
     int on_fly = ATOM_DEC(&ailua->count);
@@ -81,7 +115,7 @@ free_ailua_res(ErlNifEnv* env, void* obj)
     // 释放lua
     // 此刻是竞态，需要处理
     struct _ai_lua_res* res = (struct _ai_lua_res *)obj;
-    ai_lua_t* ailua;
+    ailua_t* ailua;
     if (NULL == res) return;
     if (NULL != res-> ailua){
         ailua = res->ailua;
@@ -131,7 +165,7 @@ ailua_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     ERL_NIF_TERM ret;
     struct _ai_lua_res* res;
-    ai_lua_t* ailua = ailua_alloc();
+    ailua_t* ailua = ailua_alloc();
     if(NULL == ailua){
         return enif_make_tuple2(env, atom_error, enif_make_string(env, STR_NOT_ENOUGHT_MEMORY, ERL_NIF_LATIN1));
     }
@@ -146,11 +180,41 @@ ailua_new(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
     return enif_make_tuple2(env, atom_ok, ret);
 };
+static ERL_NIF_TERM
+ailua_new_with_path(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    if(argc != 1) {
+        return enif_make_badarg(env);
+    }
+    if(!enif_is_binary(env, argv[0])) {
+        return enif_make_badarg(env);
+    }
+    ERL_NIF_TERM ret;
+    struct _ai_lua_res* res;
+    ailua_t* ailua = ailua_alloc();
+    if(NULL == ailua){
+        return enif_make_tuple2(env, atom_error, enif_make_string(env, STR_NOT_ENOUGHT_MEMORY, ERL_NIF_LATIN1));
+    }
+    ErlNifBinary bin;
+	enif_inspect_binary(env,argv[0],&bin);
+    ailua = ailua_init(ailua,bin.data,bin.size);
+    if(NULL == ailua){
+        return enif_make_tuple2(env, atom_error, enif_make_string(env, STR_NOT_ENOUGHT_MEMORY, ERL_NIF_LATIN1));
+    }
+    res = enif_alloc_resource(RES_AILUA, sizeof(struct _ai_lua_res));
+    if(NULL == res) return enif_make_badarg(env);
+    ret = enif_make_resource(env, res);
+    enif_release_resource(res);
 
+    res->ailua = ailua;
+
+    return enif_make_tuple2(env, atom_ok, ret);
+
+}
 
 
 ERL_NIF_TERM
-ailua_dofile(ErlNifEnv* env, ai_lua_t* ailua, const ERL_NIF_TERM arg)
+ailua_dofile(ErlNifEnv* env, ailua_t* ailua, const ERL_NIF_TERM arg)
 {
     lua_State* L = ailua->L;
     char buff_str[STACK_STRING_BUFF];
@@ -190,7 +254,7 @@ static ERL_NIF_TERM
 ailua_dofile_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     struct _ai_lua_res* res;
-    ai_lua_t* ailua;
+    ailua_t* ailua;
     task_t* task;
     ErlNifPid pid;
     ERL_NIF_TERM term;
@@ -238,7 +302,7 @@ ailua_dofile_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 
 ERL_NIF_TERM
-ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
+ailua_call(ErlNifEnv *env, ailua_t* ailua,
         const ERL_NIF_TERM arg_func,
         const ERL_NIF_TERM arg_list)
 {
@@ -254,9 +318,6 @@ ailua_call(ErlNifEnv *env, ai_lua_t* ailua,
         return enif_make_badarg(env);
     }
 
-    if(!enif_is_list(env, arg_list)){
-        return enif_make_badarg(env);
-    }
     enif_get_list_length(env,arg_list,&input_len);
     token = strchr(buff_fun, ':');
     if(NULL != token) {
@@ -359,7 +420,7 @@ static ERL_NIF_TERM
 ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     struct _ai_lua_res* res;
-    ai_lua_t* ailua;
+    ailua_t* ailua;
     task_t* task;
     ErlNifPid pid;
     ERL_NIF_TERM term ;
@@ -411,6 +472,7 @@ ailua_gencall_async(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 static ErlNifFunc nif_funcs[] = {
     {"new", 0, ailua_new},
+    {"new",1,ailua_new_with_path},
 
     {"dofile_sync", 2, ailua_dofile_sync},
     {"dofile_async", 4, ailua_dofile_async},

@@ -2,7 +2,10 @@ test = { _version = "0.1.1" }
 
 
 function hi(table)
-    print("hi there \r\n")
+    path = package.path .. "\r\n"
+
+    print("hi there I have path value: \r\n")
+    print(path)
     return table
 end
 

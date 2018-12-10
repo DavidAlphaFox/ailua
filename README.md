@@ -17,6 +17,10 @@
 ### 创建
 
     {ok,Ref} = ailua:new()
+    带有初始化路径
+    {ok,CWD} = file:get_cwd(),
+    P = erlang:list_to_binary(filename:join(CWD,"./?.lua")),
+    {ok,Ref} = ailua:new(<<";",P/binary>>).
 
 Ref会绑定一个lua虚拟机，该Ref会随着创建进程的退出而释放    
 创建Ref的Erlang进程崩溃后，该Ref的行为如下
