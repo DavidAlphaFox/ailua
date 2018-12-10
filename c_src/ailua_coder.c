@@ -4,11 +4,15 @@
 static int
 is_erl_boxer(lua_State *L, int table, const char *box)
 {
-	int r;
-	lua_getglobal(L, box); //得到盒子包装
-	lua_gettable(L, table); //
-	r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
-	lua_pop(L, 1);
+	int r = 0;
+	if(lua_getmetatable(L,table)){
+		lua_pushstring(L,box);
+		if(lua_gettable(L, table + 1)){
+			r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
+			lua_pop(L, 1);
+		}
+		lua_pop(L, 1);
+	}
 	return r;
 }
 
@@ -56,7 +60,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 						enif_make_map_put(env,term,key_term,val_term,&term);
 						lua_pop(L,1); /* remove 'value'; keep 'key' for next iteration */
 					}else{
-						lua_pop(L,1); /* remove 'value'; keep 'key' for next iteration */
+						lua_pop(L,2); /* remove key and value and stop */
 						return 0;
 					}
 				}
@@ -160,6 +164,13 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		ErlNifMapIterator iter;
 		enif_get_map_size(env, term,&len);
 		lua_createtable(L, len, 0);
+		// 设置为map
+		lua_createtable(L,1,0);
+		lua_pushstring(L,"_ERL_MAP");
+		lua_pushboolean(L,1);
+		lua_rawset(L,-3);
+		lua_setmetatable(L,-2);
+
 		enif_map_iterator_create(env, term, &iter, ERL_NIF_MAP_ITERATOR_FIRST);
 		while (enif_map_iterator_get_pair(env, &iter, &key, &value)) {
 			if(erlang_to_lua(env,key,L) && erlang_to_lua(env,value,L)){
@@ -168,8 +179,8 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			}else{
 				return 0;
 			}
-		
 		}
+
 		enif_map_iterator_destroy(env, &iter);
 	}else{
 		return 0;
