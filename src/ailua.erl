@@ -9,7 +9,13 @@
 		async_call/5,
 
 		dofile_and_wait/2,
-		call_and_wait/3
+		call_and_wait/3,
+
+		process_args/1,
+		dofile_sync/2,
+		dofile_async/4,
+		gencall_sync/3,
+		gencall_async/5
     ]).
 
 -define(APPNAME,ailua).
@@ -74,6 +80,9 @@ gencall_sync(_L,_Func,_InArgs) ->
   not_loaded(?LINE).
 gencall_async(_L,_Ref,_Dest,_Func,_InArgs) ->
   not_loaded(?LINE).
+
+
+process_args(Args)-> process_list(Args,[]).
 
 process_list([],Acc)->lists:reverse(Acc);
 process_list([H|T],Acc) when erlang:is_integer(H)->
