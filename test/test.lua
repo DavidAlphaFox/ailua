@@ -29,10 +29,7 @@ end
 function test.in_table2(id)
     str = "in_table2: " .. id 
     print(str .. "\r\n")
-    table = to_erl_map({[1] = "a",[2] = "b",[3] = "c"})
-    for k,v in pairs(table) do 
-        str1 = "key: "..k.." value: "..v
-        print(str1)
-    end
+    t = {"c","d","e","f"}
+    table = to_erl_map({[1] = "a",[2] = "b",[3] = t})
     return table
 end

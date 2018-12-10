@@ -68,22 +68,21 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 			} else {
 				int len = lua_rawlen(L, i);
 				int k = 1;
-				ERL_NIF_TERM term;
-				ERL_NIF_TERM* arr = enif_alloc(len * sizeof(ERL_NIF_TERM));
-				if(NULL == arr) return 0;
+				ERL_NIF_TERM term = enif_make_list(env,0);
+				ERL_NIF_TERM cell;
 				for (k = 1; k <= len; k++) {
 					lua_rawgeti(L, i, k);
-					if(lua_to_erlang(env,&term,L,lua_gettop(L))){
-						arr[k -1 ] = term; 
+					if(lua_to_erlang(env,&cell,L,lua_gettop(L))){
+						term = enif_make_list_cell(env,cell,term);
 						lua_pop(L, 1);
 					}else{
 						lua_pop(L, 1);
-						enif_free(arr);
 						return 0;
 					}
 				}
-				*out = enif_make_list_from_array(env, arr,len);
-				enif_free(arr);
+				if(!enif_make_reverse_list(env,term,out)){
+					return 0;
+				}
 			}
 			break;
 		}
@@ -94,23 +93,23 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 int
 erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 {
+	char buffer[256];
 	if(enif_is_atom(env,term)){
 		char* s = NULL;
 		size_t len = 0;
 		enif_get_atom_length(env,term,&len,ERL_NIF_LATIN1);
 		len++;
-		s = enif_alloc(len * sizeof(char));
-		enif_get_atom(env,term,s,len,ERL_NIF_LATIN1);
-		if(strcmp(s,"nil") == 0){
+		memset(buffer,0,len);
+		enif_get_atom(env,term,buffer,len,ERL_NIF_LATIN1);
+		if(strcmp(buffer,"nil") == 0){
 			lua_pushnil(L);
-		}else if(strcmp(s,"true") == 0){
+		}else if(strcmp(buffer,"true") == 0){
 			lua_pushboolean(L, 1);
-		}else if(strcmp(s,"false") == 0){
+		}else if(strcmp(buffer,"false") == 0){
 			lua_pushboolean(L, 0);
 		}else{
-			lua_pushstring(L, s);
+			lua_pushstring(L, buffer);
 		}
-		enif_free(s);
 	}else if (enif_is_binary(env, term)){
  		ErlNifBinary bin;
 		enif_inspect_binary(env,term,&bin);
