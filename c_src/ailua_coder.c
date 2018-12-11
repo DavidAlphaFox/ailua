@@ -41,8 +41,9 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 			size_t len;
 			const char *s = lua_tolstring(L, i, &len);
 			unsigned char* buffer =  enif_make_new_binary(env,len,out);
-			strncpy(buffer,s,len);
-			*out =  enif_make_string_len(env,s,len,ERL_NIF_LATIN1);
+			if(len > 0){
+				strncpy(buffer,s,len);
+			}
 			break;
 		}
 		case LUA_TTABLE: {
