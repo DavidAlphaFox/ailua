@@ -146,7 +146,6 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
     atom_ailua = enif_make_atom(env,"ailua");
     atom_error = enif_make_atom(env, "error");
     atom_undefined = enif_make_atom(env,"undefined");
-    atom_nil = enif_make_atom(env,"nil");
     atom_true = enif_make_atom(env,"true");
     atom_false = enif_make_atom(env,"false");
     enif_system_info(&sys_info,sizeof(ErlNifSysInfo));

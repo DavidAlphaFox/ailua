@@ -23,7 +23,6 @@ ERL_NIF_TERM atom_ok;
 ERL_NIF_TERM atom_error;
 ERL_NIF_TERM atom_ailua;
 ERL_NIF_TERM atom_undefined;
-ERL_NIF_TERM atom_nil;
 ERL_NIF_TERM atom_true;
 ERL_NIF_TERM atom_false;
 
