@@ -57,6 +57,7 @@ ailua_alloc()
     ailua_t* ailua = enif_alloc(sizeof(ailua_t));
     if(NULL == ailua) return NULL;
     lua_State* L = luaL_newstate();
+    luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE);
     if(NULL == L) {
         enif_free(ailua);
     }
