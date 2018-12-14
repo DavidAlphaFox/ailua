@@ -112,7 +112,6 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 {
 	char buffer[256];
 	if(enif_is_atom(env,term)){
-		char* s = NULL;
 		size_t len = 0;
 		enif_get_atom_length(env,term,&len,ERL_NIF_LATIN1);
 		len++;
@@ -160,13 +159,9 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			return 0;
 		}
 	}else if(enif_is_list(env,term)){
+		//不自动处理Erlang的list为lua的string
 		size_t len = 0;
 		int i = 0;
-		ErlNifBinary bin;
-		if(enif_inspect_iolist_as_binary(env, term, &bin)){
-			lua_pushlstring(L, bin.data, bin.size);
-			return 1;
-		}
 		enif_get_list_length(env,term,&len);
 		ERL_NIF_TERM list = term;
 		ERL_NIF_TERM head;
