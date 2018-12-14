@@ -22,6 +22,7 @@
 -define(APPNAME,ailua).
 -define(LIBNAME,ailua).
 -define(MAX_UINT64,18446744073709551615).
+-define(MAX_MINUS_INT64,-9223372036854775808).
 
 wait(Ref, Timeout) ->
   receive
@@ -101,7 +102,8 @@ process_list([H|T],Acc)-> process_list(T,[H|Acc]).
 
 process_item(Item) when erlang:is_integer(Item)->
 	if 
-		Item > ?MAX_UINT64 -> erlang:integer_to_binary(Item);
+		Item > ?MAX_UINT64 -> Item * 1.0;
+		Item < ?MAX_MINUS_INT64 -> Item * 1.0;
 		true ->Item
 	end;
 process_item(Item) when erlang:is_list(Item)->

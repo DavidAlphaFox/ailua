@@ -19,3 +19,8 @@ function test.in_table2(id)
     table = to_erl_map({[1] = "a",[2] = "b",[3] = t})
     return table
 end
+
+function big_number(number)
+    print(number)
+    return number
+end
