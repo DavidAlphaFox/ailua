@@ -19,15 +19,31 @@ is_erl_boxer(lua_State *L, int table, const char *box)
 int 
 lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 {
+
+	lua_Number nv = 0.0;
+	int64_t i64 = 0;
+	uint64_t ui64 = 0;
+
 	switch (lua_type(L, i)) {
 	    case LUA_TNIL: 
             *out = atom_undefined;
 			break;
 	    case LUA_TNUMBER:
-		    if (lua_tointeger(L, i) == lua_tonumber(L, i)) {
-				*out = enif_make_int(env,lua_tointeger(L, i));
-			} else {
+		   //lua max 53bit integer == 	9007199254740992 under 5.3 ?
+			nv =  lua_tonumber(L, i);
+			i64 =  lua_tointeger(L, i);
+			ui64 = lua_tointeger(L, i);
+			// 64bit 整形 -9223372036854775808 ~ 9223372036854775807
+			// 64bit 无符号整形 0 ~ 18446744073709551615
+		    if (fabs(fabs(nv) - ui64) > 0.0000001 ) {
 				*out =  enif_make_double(env,lua_tonumber(L, i));
+			}else {
+				if (nv < 0){
+					*out = enif_make_int64(env,i64);
+				}else{
+					*out = enif_make_uint64(env,ui64);
+				}
+				
 			}
 			break;
 		case LUA_TBOOLEAN:
@@ -119,18 +135,26 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		lua_pushlstring(L, bin.data, bin.size);
 	}else if (enif_is_number(env,term)){
 		unsigned int integer = 0;
+		unsigned long ul = 0;
+		int64_t i64 = 0;
+		uint64_t ui64 = 0;
 		double number = 0.0;
+		lua_Number vn = 0.0;
+
 		if(enif_get_int(env,term,&integer)){
 			lua_pushinteger(L,integer);
-		}else if(enif_get_int64(env,term,&number)){
-			lua_pushnumber(L,number);
-		}else if(enif_get_double(env,term,&number)){
-			lua_pushnumber(L,number);
 		}else if(enif_get_uint(env,term,&integer)){
 			lua_pushinteger(L,integer);
-		}else if(enif_get_uint64(env,term,&number)){
-			lua_pushnumber(L,number);
-		}else if(enif_get_ulong(env,term,&number)){
+		}else if(enif_get_int64(env,term,&i64)){
+			vn = (lua_Number)i64;
+			lua_pushnumber(L,vn);
+		}else if(enif_get_ulong(env,term,&ul)){
+			vn = (lua_Number)ul;
+			lua_pushnumber(L,vn);
+		}else if(enif_get_uint64(env,term,&ui64)){
+			vn = (lua_Number)ui64;
+			lua_pushnumber(L,vn);
+		}else if(enif_get_double(env,term,&number)){
 			lua_pushnumber(L,number);
 		}else {
 			return 0;
