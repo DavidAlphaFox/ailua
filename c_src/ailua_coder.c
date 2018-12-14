@@ -19,7 +19,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 {
 	switch (lua_type(L, i)) {
 	    case LUA_TNIL: 
-            *out = atom_nil;
+            *out = atom_undefined;
 			break;
 	    case LUA_TNUMBER:
 		    if (lua_tointeger(L, i) == lua_tonumber(L, i)) {
@@ -100,13 +100,15 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		len++;
 		memset(buffer,0,len);
 		enif_get_atom(env,term,buffer,len,ERL_NIF_LATIN1);
-		if(strcmp(buffer,"nil") == 0){
+		if(strncmp(buffer,"nil",3) == 0){
 			lua_pushnil(L);
-		}else if(strcmp(buffer,"true") == 0){
+		}else if(strncmp(buffer,"true",4) == 0){
 			lua_pushboolean(L, 1);
-		}else if(strcmp(buffer,"false") == 0){
+		}else if(strncmp(buffer,"false",4) == 0){
 			lua_pushboolean(L, 0);
-		}else{
+		}else if(strncmp(buffer,"undefined",9) == 0)
+			lua_pushnil(L);
+		else {
 			lua_pushstring(L, buffer);
 		}
 	}else if (enif_is_binary(env, term)){
