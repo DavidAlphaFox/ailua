@@ -155,13 +155,9 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			return 0;
 		}
 	}else if(enif_is_list(env,term)){
+		// list 永远都不转化成string
 		size_t len = 0;
 		int i = 0;
-		ErlNifBinary bin;
-		if(enif_inspect_iolist_as_binary(env, term, &bin)){
-			lua_pushlstring(L, bin.data, bin.size);
-			return 1;
-		}
 		enif_get_list_length(env,term,&len);
 		ERL_NIF_TERM list = term;
 		ERL_NIF_TERM head;
