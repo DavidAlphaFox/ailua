@@ -7,11 +7,9 @@ is_erl_boxer(lua_State *L, int table, const char *box)
 	int r = 0;
 	if(lua_getmetatable(L,table)){
 		lua_pushstring(L,box);
-		if(lua_gettable(L, table + 1)){
-			r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
-			lua_pop(L, 1);
-		}
-		lua_pop(L, 1);
+		lua_gettable(L, table + 1);
+		r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
+		lua_pop(L, 2);
 	}
 	return r;
 }
@@ -67,7 +65,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 				}
 				*out = term;
 			} else {
-				int len = lua_rawlen(L, i);
+				int len = lua_objlen(L, i);
 				int k = 1;
 				ERL_NIF_TERM term = enif_make_list(env,0);
 				ERL_NIF_TERM cell;

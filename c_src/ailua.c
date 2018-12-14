@@ -61,7 +61,7 @@ ailua_alloc()
         enif_free(ailua);
     }
     luaL_openlibs(L);
-    if(luaL_dostring(L, erl_functions_s) != LUA_OK){
+    if(luaL_dostring(L, erl_functions_s) != 0){
         lua_close(L);
         enif_free(ailua);
         return NULL;
@@ -223,7 +223,7 @@ ailua_dofile(ErlNifEnv* env, ailua_t* ailua, const ERL_NIF_TERM arg)
         return make_error_tuple(env, "invalid_filename");
     }
 
-    if(luaL_dofile(L, buff_str) != LUA_OK) {
+    if(luaL_dofile(L, buff_str) != 0) {
         const char *error = lua_tostring(L, -1);
         ERL_NIF_TERM error_tuple = make_error_tuple(env, error);
         lua_pop(L,1);
@@ -378,7 +378,7 @@ ailua_call(ErlNifEnv *env, ailua_t* ailua,
         }
     }
     if(invoke_self > 0) input_len++ ;
-    if(lua_pcall(L, input_len, LUA_MULTRET,0) != LUA_OK) {
+    if(lua_pcall(L, input_len, LUA_MULTRET,0) != 0) {
         error = lua_tostring(L, -1);
         lua_pop(L,1);
         return enif_make_tuple2(env, atom_error, enif_make_string(env, error, ERL_NIF_LATIN1));

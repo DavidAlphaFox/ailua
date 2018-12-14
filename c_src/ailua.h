@@ -1,7 +1,12 @@
 #ifndef __AI_LUA_H__
 #define __AI_LUA_H__
 #include "erl_nif.h"
+/*
 #include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+*/
+#include "luajit.h"
 #include "lauxlib.h"
 #include "lualib.h"
 #include <stdio.h>
