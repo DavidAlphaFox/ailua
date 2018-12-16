@@ -13,8 +13,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 ifeq ($(uname_S),Darwin)
 	PLAT=macosx
-	CFLAGS ?= -O3 -std=c99 -arch x86_64 -finline-functions -Wall
-	-Wmissing-prototypes
+	CFLAGS ?= -O3 -std=c99 -arch x86_64 -finline-functions -Wall -Wmissing-prototypes
 	CXXFLAGS ?= -O3 -arch x86_64 -finline-functions -Wall
 	LDFLAGS ?= -arch x86_64 -flat_namespace -undefined suppress
 else
