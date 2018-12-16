@@ -13,7 +13,8 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 ifeq ($(uname_S),Darwin)
 	PLAT=macosx
-	CFLAGS ?= -O3 -std=c99 -arch x86_64 -finline-functions -Wall -Wmissing-prototypes
+	CFLAGS ?= -O3 -std=c99 -arch x86_64 -finline-functions -Wall
+	-Wmissing-prototypes
 	CXXFLAGS ?= -O3 -arch x86_64 -finline-functions -Wall
 	LDFLAGS ?= -arch x86_64 -flat_namespace -undefined suppress
 else
@@ -47,7 +48,7 @@ LUA_DIR ?= $(C_SRC_DIR)/3rd/lua
 CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
 CXXFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
 
-LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei -L"$(LUA_DIR)" -llua 
+LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei
 
 
 
@@ -55,11 +56,11 @@ LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei -L"$(LUA_DIR
 all: $(LUA_STATICLIB) $(C_SRC_OUTPUT)
 
 $(LUA_STATICLIB) :
-	@cd $(LUA_DIR) && $(MAKE) CC='$(CC) -std=gnu99 -fPIC' $(PLAT)
+	@cd $(LUA_DIR) && $(MAKE) MYCFLAGS='-fPIC' $(PLAT)
 
 $(C_SRC_OUTPUT): $(OBJECTS)
 	@mkdir -p $(BASEDIR)/priv/
-	 $(CC) $(OBJECTS) $(LDFLAGS) $(LDLIBS) -o $(C_SRC_OUTPUT)
+	 $(CC) $(OBJECTS) $(LUA_STATICLIB)  $(LDFLAGS) $(LDLIBS) -o $(C_SRC_OUTPUT)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS)  $<
