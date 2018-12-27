@@ -119,9 +119,11 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			lua_pushboolean(L, 1);
 		}else if(strncmp(buffer,"false",4) == 0){
 			lua_pushboolean(L, 0);
-		}else if(strncmp(buffer,"undefined",9) == 0)
+		}else if(strncmp(buffer,"undefined",9) == 0){
 			lua_pushnil(L);
-		else {
+		}else if(strncmp(buffer,"null",4) == 0){
+			lua_pushnil(L);
+		}else {
 			lua_pushstring(L, buffer);
 		}
 	}else if (enif_is_binary(env, term)){
