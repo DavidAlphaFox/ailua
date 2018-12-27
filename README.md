@@ -63,7 +63,7 @@ Ref会绑定一个lua虚拟机，该Ref会随着创建进程的退出而释放
 - 目前Erlang到lua传值不支持tuple和proplists，不支持Erlang高阶函数传入lua
 - Erlang到lua传值，字符串使用binary而非list
 - Erlang到lua传值，如果字符串是list，则会被映射到lua的table上
-- Erlang到lua传值，原子值true，false会自动转化成lua的boolean型，undefined会自动转化成lua的nil值
+- Erlang到lua传值，原子值true，false会自动转化成lua的boolean型，undefined和null会自动转化成lua的nil值
 - Erlang到lua传值，如果整形大于了18446744073709551615，默认方法会将该整形转化成double
 - Erlang到lua传值，如果整形小于了-9223372036854775808，默认方法会将该整形转化成double
 - lua到Erlang传值，boolean会自动变更为atom，nil会自动变更为erlang的undefined
