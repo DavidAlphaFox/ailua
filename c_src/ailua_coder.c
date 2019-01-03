@@ -113,15 +113,15 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		len++;
 		memset(buffer,0,len);
 		enif_get_atom(env,term,buffer,len,ERL_NIF_LATIN1);
-		if(strncmp(buffer,"nil",3) == 0){
+		if((len == 4) && (strncmp(buffer,"nil",3) == 0)){
 			lua_pushnil(L);
-		}else if(strncmp(buffer,"true",4) == 0){
+		}else if((len == 5) && (strncmp(buffer,"true",4) == 0)){
 			lua_pushboolean(L, 1);
-		}else if(strncmp(buffer,"false",4) == 0){
+		}else if((len == 5) && (strncmp(buffer,"false",4) == 0)){
 			lua_pushboolean(L, 0);
-		}else if(strncmp(buffer,"undefined",9) == 0){
+		}else if((len == 10) && (strncmp(buffer,"undefined",9) == 0)){
 			lua_pushnil(L);
-		}else if(strncmp(buffer,"null",4) == 0){
+		}else if((len == 5) && (strncmp(buffer,"null",4) == 0)){
 			lua_pushnil(L);
 		}else {
 			lua_pushstring(L, buffer);
