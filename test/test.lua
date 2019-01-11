@@ -1,3 +1,5 @@
+local base = require "test/base"
+
 test = { _version = "0.1.1" }
 
 
@@ -23,4 +25,9 @@ end
 function big_number(num)
     print(num)
     return num
+end
+
+function test:put(k,v)
+    print(base)
+    base:put(k,v)
 end
