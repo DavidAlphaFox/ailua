@@ -473,10 +473,10 @@ static ErlNifFunc nif_funcs[] = {
     {"new", 0, ailua_new},
     {"new",1,ailua_new_with_path},
 
-    {"dofile_sync", 2, ailua_dofile_sync},
+    {"dofile_sync", 2, ailua_dofile_sync,ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"dofile_async", 4, ailua_dofile_async},
 
-    {"gencall_sync", 3, ailua_gencall_sync},
+    {"gencall_sync", 3, ailua_gencall_sync,ERL_NIF_DIRTY_JOB_CPU_BOUND},
     {"gencall_async", 5, ailua_gencall_async}
 
 };
