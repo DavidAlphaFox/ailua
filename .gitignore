@@ -25,3 +25,4 @@ rebar3.crashdump
 log
 .erlang.mk
 deps
+ailua.d
