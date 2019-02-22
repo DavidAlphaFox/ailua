@@ -158,6 +158,11 @@ load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
 
     return 0;
 }
+static void
+unload(ErlNifEnv* env, void* priv)
+{
+  pool_free((task_pool_t*)priv);
+}
 
 
 static ERL_NIF_TERM
@@ -480,4 +485,4 @@ static ErlNifFunc nif_funcs[] = {
 
 };
 
-ERL_NIF_INIT(ailua, nif_funcs, &load, NULL, NULL, NULL);
+ERL_NIF_INIT(ailua, nif_funcs, &load, NULL, NULL, &unload);
