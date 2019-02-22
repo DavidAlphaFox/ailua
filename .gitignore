@@ -25,3 +25,15 @@ rebar3.crashdump
 log
 .erlang.mk
 deps
+ailua.d
+c_src/3rd/luajit/src/host/buildvm
+c_src/3rd/luajit/src/host/buildvm_arch.h
+c_src/3rd/luajit/src/host/minilua
+c_src/3rd/luajit/src/jit/vmdef.lua
+c_src/3rd/luajit/src/lj_bcdef.h
+c_src/3rd/luajit/src/lj_ffdef.h
+c_src/3rd/luajit/src/lj_folddef.h
+c_src/3rd/luajit/src/lj_libdef.h
+c_src/3rd/luajit/src/lj_recdef.h
+c_src/3rd/luajit/src/lj_vm.s
+c_src/3rd/luajit/src/luajit
