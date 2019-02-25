@@ -10,13 +10,20 @@
 
 ## lua版本
 
-master分时，使用的是lua5.3版本，使用的默认配置，并未使用erlang的内存分配器优化lua的内存分配
+master分支，使用的是lua5.3版本，使用的默认配置，并未使用erlang的内存分配器优化lua的内存分配
 
 luajit分支，使用的是luajit-2.0.5版本，默认打开jit模式，支持lua5.1版本的语法
 
 ## 线程池规则
 
-最少为1个线程，默认会创建Erlang调度器线程的数量一半新线程作为异步线程池，目前不支持指定线程数量的方法。
+最少为1个线程，默认会创建Erlang调度器线程的数量一半新线程作为异步线程池，目前不
+	支持指定线程数量的方法。
+
+### 注意 
+ailua 从tag-0.3.0及tag-0.3.0-jit后就不再支持线程池，改为使用Erlang自身的Dirty
+	Schedules来做承载，可以配合poolboy或者
+	[ailib](!https://github.com/DavidAlphaFox/ailib)中的pool相关模块使用
+	
 
 ## 如何使用
 
