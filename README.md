@@ -22,7 +22,7 @@ luajit分支，使用的是luajit-2.0.5版本，默认打开jit模式，支持lu
 ### 注意 
 ailua 从tag-0.3.0及tag-0.3.0-jit后就不再支持线程池，改为使用Erlang自身的Dirty
 	Schedules来做承载，可以配合poolboy或者
-	[ailib](!https://github.com/DavidAlphaFox/ailib)中的pool相关模块使用
+	[ailib](https://github.com/DavidAlphaFox/ailib)中的pool相关模块使用
 	
 
 ## 如何使用
