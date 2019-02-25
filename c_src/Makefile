@@ -7,7 +7,7 @@ C_SRC_DIR = $(CURDIR)
 C_SRC_ENV ?= $(C_SRC_DIR)/env.mk
 C_SRC_OUTPUT ?= $(CURDIR)/../priv/ailua.so
 
-OBJECTS = ailua_common.o  ailua_coder.o ailua.o ailua_nif.o 
+OBJECTS = ailua_common.o ailua.o ailua_coder.o ailua_nif.o
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -40,14 +40,21 @@ endif
 endif
 endif
 
-LUA_STATICLIB := $(C_SRC_DIR)/3rd/lua/liblua.a
-LUA_LIB ?= $(LUA_STATICLIB)
-LUA_DIR ?= $(C_SRC_DIR)/3rd/lua
+#LUA_STATICLIB := $(C_SRC_DIR)/3rd/lua/liblua.a
+#LUA_LIB ?= lua
+#LUA_SRC :=  $(C_SRC_DIR)/3rd/lua/
+#LUA_DIR ?= $(C_SRC_DIR)/3rd/lua
 
-CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
-CXXFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_DIR)" -fPIC
+LUA_STATICLIB := $(C_SRC_DIR)/3rd/luajit/src/libluajit.a
+LUA_LIB ?= luajit
+LUA_SRC :=  $(C_SRC_DIR)/3rd/luajit/src
+LUA_DIR ?= $(C_SRC_DIR)/3rd/luajit
+undefine PLAT
 
-LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei
+CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_SRC)" -fPIC 
+CXXFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)" -I"$(LUA_SRC)" -fPIC 
+
+LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei 
 
 
 
@@ -55,11 +62,11 @@ LDLIBS += -shared -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei
 all: $(LUA_STATICLIB) $(C_SRC_OUTPUT)
 
 $(LUA_STATICLIB) :
-	@cd $(LUA_DIR) && $(MAKE) MYCFLAGS='-fPIC' $(PLAT)
+	@cd $(LUA_DIR) && $(MAKE) CC='$(CC) -std=gnu99 -fPIC' $(PLAT)
 
 $(C_SRC_OUTPUT): $(OBJECTS)
 	@mkdir -p $(BASEDIR)/priv/
-	 $(CC) $(OBJECTS) $(LUA_STATICLIB)  $(LDFLAGS) $(LDLIBS) -o $(C_SRC_OUTPUT)
+	 $(CC) $(OBJECTS) $(LUA_STATICLIB) $(LDFLAGS) $(LDLIBS) -o $(C_SRC_OUTPUT)
 
 %.o: %.c
 	$(CC) -c $(CFLAGS)  $<

@@ -7,10 +7,9 @@
 // erlang
 #include "erl_nif.h"
 // lua
-#include "lua.h"
+#include "luajit.h"
 #include "lauxlib.h"
 #include "lualib.h"
-
 // ailua common
 #include "ailua_common.h"
 #include "ailua_atomic.h"
@@ -92,7 +91,7 @@ ailua_alloc(const char* path,size_t path_len)
 {
   ailua_t* ailua = enif_alloc(sizeof(ailua_t));
   lua_State* L = luaL_newstate();
-
+  luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE);
   if(NULL == ailua) {
     goto error;
   }
@@ -100,7 +99,7 @@ ailua_alloc(const char* path,size_t path_len)
     goto error;
   }
   luaL_openlibs(L);
-  if(luaL_dostring(L, erl_functions_s) != LUA_OK){
+  if(luaL_dostring(L, erl_functions_s) != 0){
     goto error;
   }
   if(NULL != path){
@@ -132,7 +131,7 @@ ailua_dofile(ErlNifEnv* env,const ERL_NIF_TERM arg,void* context)
     return make_error_tuple(env, INVAILD_FILENAME);
   }
 
-  if(luaL_dofile(L, buff_str) != LUA_OK) {
+  if(luaL_dofile(L, buff_str) != 0) {
     const char *error = lua_tostring(L, -1);
     ERL_NIF_TERM error_tuple = make_error_tuple(env, error);
     lua_pop(L,1);
@@ -225,7 +224,7 @@ ailua_call(ErlNifEnv *env,
   }
   // 如果是包含self,增加参数个数
   if(invoke_self > 0) input_len++ ;
-  if(lua_pcall(L, input_len, LUA_MULTRET,0) != LUA_OK) {
+  if(lua_pcall(L, input_len, LUA_MULTRET,0) != 0) {
     error = lua_tostring(L, -1);
     lua_pop(L,1);
     return enif_make_tuple2(env, atom_error, enif_make_string(env, error, ERL_NIF_LATIN1));

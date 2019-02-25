@@ -1,3 +1,4 @@
+// C 
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
@@ -6,11 +7,12 @@
 // erlang
 #include "erl_nif.h"
 // lua
-#include "lua.h"
+#include "luajit.h"
 #include "lauxlib.h"
 #include "lualib.h"
 // ailua common
 #include "ailua_common.h"
+#include "ailua_coder.h"
 
 static int
 is_erl_boxer(lua_State *L, int table, const char *box)
@@ -18,11 +20,9 @@ is_erl_boxer(lua_State *L, int table, const char *box)
 	int r = 0;
 	if(lua_getmetatable(L,table)){
 		lua_pushstring(L,box);
-		if(lua_gettable(L, table + 1)){
-			r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
-			lua_pop(L, 1);
-		}
-		lua_pop(L, 1);
+		lua_gettable(L, table + 1);
+		r = lua_isboolean(L, -1) && lua_toboolean(L, -1);
+		lua_pop(L, 2);
 	}
 	return r;
 }
@@ -30,17 +30,15 @@ is_erl_boxer(lua_State *L, int table, const char *box)
 int 
 lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 {
-
 	lua_Number nv = 0.0;
 	int64_t i64 = 0;
 	uint64_t ui64 = 0;
-
 	switch (lua_type(L, i)) {
 	    case LUA_TNIL: 
             *out = atom_undefined;
 			break;
 	    case LUA_TNUMBER:
-		   //lua max 53bit integer == 	9007199254740992 under 5.3 ?
+			//lua max 53bit integer == 	9007199254740992 under 5.3 ?
 			nv =  lua_tonumber(L, i);
 			i64 =  lua_tointeger(L, i);
 			ui64 = lua_tointeger(L, i);
@@ -54,6 +52,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 				}else{
 					*out = enif_make_uint64(env,ui64);
 				}
+				
 			}
 			break;
 		case LUA_TBOOLEAN:
@@ -93,7 +92,7 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 				}
 				*out = term;
 			} else {
-				int len = lua_rawlen(L, i);
+				int len = lua_objlen(L, i);
 				int k = 1;
 				ERL_NIF_TERM term = enif_make_list(env,0);
 				ERL_NIF_TERM cell;
@@ -113,7 +112,6 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 			}
 			break;
 		}
-		
 	}
 	return 1;
 }
@@ -146,17 +144,17 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 		enif_inspect_binary(env,term,&bin);
 		lua_pushlstring(L, bin.data, bin.size);
 	}else if (enif_is_number(env,term)){
-		unsigned int integer = 0;
+		int in = 0;
+		unsigned int ui = 0;
 		unsigned long ul = 0;
 		int64_t i64 = 0;
 		uint64_t ui64 = 0;
 		double number = 0.0;
 		lua_Number vn = 0.0;
-
-		if(enif_get_int(env,term,&integer)){
-			lua_pushinteger(L,integer);
-		}else if(enif_get_uint(env,term,&integer)){
-			lua_pushinteger(L,integer);
+		if(enif_get_int(env,term,&in)){
+			lua_pushinteger(L,in);
+		}else if(enif_get_uint(env,term,&ui)){
+			lua_pushinteger(L,ui);
 		}else if(enif_get_int64(env,term,&i64)){
 			vn = (lua_Number)i64;
 			lua_pushnumber(L,vn);
@@ -172,7 +170,7 @@ erlang_to_lua(ErlNifEnv* env,ERL_NIF_TERM term,lua_State *L)
 			return 0;
 		}
 	}else if(enif_is_list(env,term)){
-		//不自动处理Erlang的list为lua的string
+		// list 永远都不转化成string
 		size_t len = 0;
 		int i = 0;
 		enif_get_list_length(env,term,&len);
