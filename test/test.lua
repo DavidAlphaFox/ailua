@@ -1,9 +1,11 @@
+local base = require "test/base"
+
 test = { _version = "0.1.1" }
 
 
 function hi(table)
     path = package.path .. "\r\n"
-
+    print("the table is type: " .. type(table) .. "\r\n")
     print("hi there I have path value: \r\n")
     print(path)
     return table
@@ -20,7 +22,13 @@ function test.in_table2(id)
     return table
 end
 
-function big_number(number)
-    print(number)
-    return number
+
+function big_number(num)
+    print(num)
+    return num
+end
+
+function test:put(k,v)
+    print(base)
+    base:put(k,v)
 end

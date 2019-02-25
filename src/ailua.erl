@@ -2,21 +2,12 @@
 -on_load(init/0).
 
 -export([
-		new/0,
-		new/1,
-		dofile/2,
-		async_dofile/4,
-		call/3,
-		async_call/5,
-
-		dofile_and_wait/2,
-		call_and_wait/3,
-
-		process_args/1,
-		dofile_sync/2,
-		dofile_async/4,
-		gencall_sync/3,
-		gencall_async/5
+         new/0,
+         new/1,
+         dofile/2,
+         call/3,
+         gencall/3,
+         process_args/1
     ]).
 
 -define(APPNAME,ailua).
@@ -24,34 +15,9 @@
 -define(MAX_UINT64,18446744073709551615).
 -define(MAX_MINUS_INT64,-9223372036854775808).
 
-wait(Ref, Timeout) ->
-  receive
-    {ailua, Ref, Res} -> Res
-  after Timeout ->
-      throw({error, timeout, Ref})
-  end.
-
-
-dofile_and_wait(L,FilePath) ->
-  Ref = make_ref(),
-  ok = dofile_async(L,Ref,self(),FilePath),
-  wait(Ref, 100000).
-
-
-call_and_wait(L,Func,Args) ->
-  Ref = make_ref(),
-  NewArgs = process_list(Args,[]),
-  ok = gencall_async(L,Ref,self(),Func,NewArgs),
-  wait(Ref, 100000).
-
-dofile(L,FilePath)-> dofile_sync(L,FilePath).
-async_dofile(L,Ref,Pid,FilePath) -> dofile_async(L,Ref,Pid,FilePath).
 call(L,FunName,Args)->
 	NewArgs = process_list(Args,[]),
-	gencall_sync(L,FunName,NewArgs).
-async_call(L,Ref,Pid,FunName,Args)->
-	NewArgs = process_list(Args,[]),
-	gencall_async(L,Ref,Pid,FunName,NewArgs).
+	gencall(L,FunName,NewArgs).
 
 init() ->
   LibName =
@@ -75,14 +41,10 @@ new() ->
 new(_Path)->
 	not_loaded(?LINE).
 
-dofile_sync(_L,_FilePath) ->
-  not_loaded(?LINE).
-dofile_async(_L,_Ref,_Dest,_FilePath) ->
+dofile(_L,_FilePath) ->
   not_loaded(?LINE).
 
-gencall_sync(_L,_Func,_InArgs) ->
-  not_loaded(?LINE).
-gencall_async(_L,_Ref,_Dest,_Func,_InArgs) ->
+gencall(_L,_Func,_InArgs) ->
   not_loaded(?LINE).
 
 

@@ -1,5 +1,5 @@
 PROJECT = ailua
-PROJECT_DESCRIPTION = New project
-PROJECT_VERSION = 0.1.9
+PROJECT_DESCRIPTION = lua to erlang bridge for productions from ailink.io
+PROJECT_VERSION = 0.3.0-jit
 
 include erlang.mk
