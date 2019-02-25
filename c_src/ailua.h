@@ -1,37 +1,20 @@
 #ifndef __AI_LUA_H__
 #define __AI_LUA_H__
-#include "erl_nif.h"
-#include "lua.h"
-#include "lauxlib.h"
-#include "lualib.h"
-#include <stdio.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <string.h>
-#include <math.h>
-
-typedef struct
-{
-    int binding;
-    int stop;
-    int count;
-    lua_State* L;
-} ailua_t;
 
 
-ErlNifResourceType *RES_AILUA;
-ERL_NIF_TERM atom_ok;
-ERL_NIF_TERM atom_error;
-ERL_NIF_TERM atom_ailua;
-ERL_NIF_TERM atom_undefined;
-ERL_NIF_TERM atom_true;
-ERL_NIF_TERM atom_false;
-
-void ailua_check_stop(ailua_t* ailua);
-ERL_NIF_TERM ailua_dofile(ErlNifEnv* env, ailua_t* ailua, const ERL_NIF_TERM arg);
-ERL_NIF_TERM ailua_call(ErlNifEnv *env, ailua_t* ailua,
-        const ERL_NIF_TERM arg_func,
-        const ERL_NIF_TERM arg_list);
-ERL_NIF_TERM make_error_tuple(ErlNifEnv *env, const char *reason);
+//释放lua状态机器
+void ailua_free(void* context);
+//创建新的lua状态机器
+void* ailua_alloc(const char* path,size_t path_len);
+//执行lua文件
+ERL_NIF_TERM
+ailua_dofile(ErlNifEnv* env, const ERL_NIF_TERM arg,void* context);
+//执行lua函数
+ERL_NIF_TERM
+ailua_call(ErlNifEnv *env,
+					 const ERL_NIF_TERM arg_func,
+					 const ERL_NIF_TERM arg_list,
+					 void* context);
 
 #endif
+

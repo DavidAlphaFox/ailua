@@ -1,5 +1,16 @@
-#include "ailua.h"
-
+#include <stdio.h>
+#include <stdbool.h>
+#include <assert.h>
+#include <string.h>
+#include <math.h>
+// erlang
+#include "erl_nif.h"
+// lua
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
+// ailua common
+#include "ailua_common.h"
 
 static int
 is_erl_boxer(lua_State *L, int table, const char *box)
@@ -43,7 +54,6 @@ lua_to_erlang(ErlNifEnv* env,ERL_NIF_TERM* out,lua_State *L, int i)
 				}else{
 					*out = enif_make_uint64(env,ui64);
 				}
-				
 			}
 			break;
 		case LUA_TBOOLEAN:
